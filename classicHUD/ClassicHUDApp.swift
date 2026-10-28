@@ -1,12 +1,11 @@
 //
-//  VolumeHUDApp.swift
+//  ClassicHUDApp.swift
 //  by Danny Stewart (2025)
 //  MIT License
-//  https://github.com/dannystewart/volumeHUD
+//  https://github.com/privatecoder/classicHUD
 //
 
 import AppKit
-import Darwin
 import Foundation
 import SwiftUI
 @preconcurrency import UserNotifications
@@ -20,9 +19,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
     /// Maximum system uptime to consider as "just logged in" (3 minutes)
     private nonisolated static let loginUptimeThreshold: TimeInterval = 180.0
 
-    // MARK: - Instance Conflict Detection
-
-    private nonisolated static let procPidPathInfoMaxSize = 4096
+    /// How often to retry starting media key interception until it succeeds
+    private nonisolated static let interceptionRetryInterval: TimeInterval = 1.0
 
     var volumeMonitor: VolumeMonitor!
     #if !SANDBOX
@@ -38,29 +36,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
     #if !SANDBOX
         /// Check to see if brightness is enabled
         private var isBrightnessEnabled: Bool {
-            UserDefaults.standard.bool(forKey: "brightnessEnabled")
+            UserDefaults.standard.bool(forKey: SettingsKey.brightnessEnabled)
         }
+
+        /// Retries starting media key interception, for example after a late Accessibility grant
+        private var interceptionRetryTimer: Timer?
+
+        /// Whether key observation has been restarted since Accessibility became trusted
+        private var didRestartObserversForTrust = false
     #endif // !SANDBOX
-
-    deinit {
-        DistributedNotificationCenter.default().removeObserver(self)
-    }
-
-    /// Returns the .app bundle path for the given PID, or nil if it can't be determined.
-    private nonisolated static func getBundlePath(for pid: pid_t) -> String? {
-        var pathBuffer = [CChar](repeating: 0, count: procPidPathInfoMaxSize)
-        let result = proc_pidpath(pid, &pathBuffer, UInt32(procPidPathInfoMaxSize))
-        guard result > 0 else { return nil }
-
-        let pathLength = pathBuffer.firstIndex(of: 0) ?? pathBuffer.count
-        let utf8Bytes = pathBuffer[..<pathLength].map { UInt8(bitPattern: $0) }
-        guard let executablePath = String(bytes: utf8Bytes, encoding: .utf8) else { return nil }
-
-        if let appRange = executablePath.range(of: ".app/") {
-            return String(executablePath[..<appRange.upperBound].dropLast(1))
-        }
-        return nil
-    }
 
     // MARK: - On Finish Launching
 
@@ -112,7 +96,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
                 // Only show startup notification if launched manually
                 if isManualLaunch() {
                     Task { @MainActor in
-                        self.postUserNotification(title: "volumeHUD started!", body: nil)
+                        self.postUserNotification(title: "classicHUD started!", body: nil)
                     }
                 } else {
                     logger.info("Skipping startup notification due to automatic launch.")
@@ -127,10 +111,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
 
         #if !SANDBOX
             // Start brightness monitoring only if enabled in settings
-            startBrightnessMonitoringIfEnabled()
+            updateBrightnessMonitoring()
 
-            // Start media key interceptor to hide system HUDs
-            startMediaKeyInterceptor()
+            // Start media key interceptor to hide system HUDs, retrying until it succeeds
+            ensureMediaKeyInterception()
         #endif // !SANDBOX
 
         // Start monitoring display configuration changes
@@ -149,20 +133,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
     }
 
     #if !SANDBOX
+        /// Start or stop brightness monitoring to match the setting.
         @MainActor
-        func startBrightnessMonitoringIfEnabled() {
+        func updateBrightnessMonitoring() {
             if isBrightnessEnabled {
                 logger.info("Brightness HUD enabled; starting brightness monitoring.")
                 brightnessMonitor.startMonitoring()
             } else {
-                logger.info("Brightness HUD disabled; skipping brightness monitoring.")
+                logger.info("Brightness HUD disabled; stopping brightness monitoring.")
+                brightnessMonitor.stopMonitoring()
             }
         }
 
         /// Start the media key interceptor to hide system HUDs. The interceptor automatically falls
         /// back to system HUDs if interception fails.
         @MainActor
-        func startMediaKeyInterceptor() {
+        @discardableResult
+        func startMediaKeyInterceptor() -> Bool {
             // Create the interceptor if not already created
             if mediaKeyInterceptor == nil {
                 mediaKeyInterceptor = MediaKeyInterceptor()
@@ -173,11 +160,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
                 volumeMonitor.mediaKeyInterceptor = mediaKeyInterceptor
             }
 
-            if mediaKeyInterceptor?.start() == true {
-                logger.info("Media key interceptor started.")
-            } else {
-                logger.warning("Failed to start media key interceptor. Accessibility permissions may be required.")
-            }
+            guard mediaKeyInterceptor?.start() == true else { return false }
+            logger.info("Media key interceptor started.")
+            return true
         }
     #endif // !SANDBOX
 
@@ -237,43 +222,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
         return true
     }
 
-    /// Checks for another instance of this app running from a different bundle path. Returns the
-    /// conflicting bundle path if found, nil otherwise.
+    /// Checks for another copy of this app (release, debug, or sandbox build) running from a different
+    /// bundle path. Returns the conflicting bundle path if found, nil otherwise.
     private func checkForConflictingInstance() -> String? {
         let currentPID = ProcessInfo.processInfo.processIdentifier
-        let currentBundlePath = Bundle.main.bundlePath
+        let currentBundlePath = Bundle.main.bundleURL.standardizedFileURL.path
 
-        guard let executableName = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String else {
-            logger.warning("Could not determine executable name for conflict detection")
+        // Debug and sandbox builds append ".debug" or ".mas" to the release bundle ID.
+        guard let bundleID = Bundle.main.bundleIdentifier else {
+            logger.warning("Could not determine bundle identifier for conflict detection")
             return nil
         }
+        let baseBundleID = bundleID.replacing(/\.(debug|mas)$/, with: "")
 
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        task.arguments = ["-f", executableName]
-
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-            let pids = output.split(separator: "\n").compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
-
-            for pid in pids {
-                if pid == currentPID { continue }
-                if let bundlePath = Self.getBundlePath(for: pid), bundlePath != currentBundlePath {
-                    return bundlePath
-                }
-            }
-        } catch {
-            logger.warning("Failed to check for other instances: \(error)")
+        for app in NSWorkspace.shared.runningApplications {
+            guard
+                app.processIdentifier != currentPID,
+                let otherID = app.bundleIdentifier,
+                otherID == baseBundleID || otherID.hasPrefix(baseBundleID + "."),
+                let otherPath = app.bundleURL?.standardizedFileURL.path,
+                otherPath != currentBundlePath else { continue }
+            return otherPath
         }
-
         return nil
     }
 
@@ -340,7 +310,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
         )
 
         panel.contentViewController = hostingController
-        panel.title = "About volumeHUD"
+        panel.title = "About classicHUD"
 
         // Prevent the panel from closing when clicking away
         panel.hidesOnDeactivate = false
@@ -369,44 +339,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
 
         // MARK: - Accessibility Permissions
 
-        private nonisolated func requestAccessibilityPermissionsIfNeeded() {
-            // Check current permission status
-            let isCurrentlyTrusted = AXIsProcessTrusted()
-
-            // If already trusted, no need to prompt
-            if isCurrentlyTrusted {
+        private func requestAccessibilityPermissionsIfNeeded() {
+            if AXIsProcessTrusted() {
                 logger.info("Accessibility permissions already granted.")
+                didRestartObserversForTrust = true // Observers start with permissions in place.
                 return
             }
 
-            // If not trusted, request with prompt.
-            logger.info("Prompting/checking for accessibility permissions.")
-
-            let promptKey = "AXTrustedCheckOptionPrompt"
-            let options = [promptKey: true] as [String: Bool] as CFDictionary
+            logger.info("Prompting for accessibility permissions.")
+            let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
+        }
 
-            // Update accessibility status after the request
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-                let newStatus = AXIsProcessTrusted()
-                updateAccessibilityStatus()
+        /// Starts media key interception now, or keeps retrying until it succeeds. Covers both a
+        /// late Accessibility grant and a tap that fails to install even though trust is granted.
+        private func ensureMediaKeyInterception() {
+            guard !startMediaKeyInterceptor() else { return }
 
-                if newStatus {
-                    logger.info("Accessibility permissions granted! Key press monitoring will be more reliable.")
-                } else {
-                    logger.info("Accessibility permissions not yet enabled. Key press monitoring will be limited.")
-                    logger.info("To enable: System Settings → Privacy & Security → Accessibility")
-                }
+            logger.warning("Media key interceptor not started yet; retrying until it is. Accessibility permissions may be required.")
+            interceptionRetryTimer?.invalidate()
+            interceptionRetryTimer = Timer.scheduledTimer(withTimeInterval: Self.interceptionRetryInterval, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.retryMediaKeyInterception() }
             }
         }
 
-        @MainActor
-        private func updateAccessibilityStatus() {
-            // Update both monitors' accessibility status centrally
-            brightnessMonitor.updateAccessibilityStatus()
-            volumeMonitor.updateAccessibilityStatus()
+        private func retryMediaKeyInterception() {
+            guard AXIsProcessTrusted() else { return }
+
+            if !didRestartObserversForTrust {
+                // Key observation installed before the grant may be missing paths; recreate it once.
+                didRestartObserversForTrust = true
+                logger.info("Accessibility permissions granted; restarting key monitoring.")
+                brightnessMonitor.updateAccessibilityStatus()
+                volumeMonitor.restartKeyMonitoring()
+                brightnessMonitor.restartKeyMonitoring()
+            }
+
+            guard startMediaKeyInterceptor() else { return }
+            interceptionRetryTimer?.invalidate()
+            interceptionRetryTimer = nil
         }
     #endif // !SANDBOX
 
@@ -461,7 +432,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
         volumeMonitor?.stopMonitoring()
 
         #if !SANDBOX
-            if isBrightnessEnabled { brightnessMonitor?.stopMonitoring() }
+            interceptionRetryTimer?.invalidate()
+            interceptionRetryTimer = nil
+            brightnessMonitor?.stopMonitoring()
             mediaKeyInterceptor?.stop()
         #endif // !SANDBOX
         hudController?.stopDisplayChangeMonitoring()
@@ -471,12 +444,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotifi
     }
 }
 
-// MARK: - VolumeHUDApp
+// MARK: - ClassicHUDApp
 
 @main
 @available(macOS 26.0, *)
-struct VolumeHUDApp: App {
+struct ClassicHUDApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    init() {
+        // Before any view or monitor reads a setting.
+        SettingsKey.registerDefaults()
+    }
 
     @available(macOS 26.0, *)
     var body: some Scene {

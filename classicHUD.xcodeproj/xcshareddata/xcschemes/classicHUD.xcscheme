@@ -16,9 +16,9 @@
                   <BuildableReference
                      BuildableIdentifier = "primary"
                      BlueprintIdentifier = "30C937672E806B79004B5AF5"
-                     BuildableName = "volumeHUD.app"
-                     BlueprintName = "volumeHUD"
-                     ReferencedContainer = "container:volumeHUD.xcodeproj">
+                     BuildableName = "classicHUD.app"
+                     BlueprintName = "classicHUD"
+                     ReferencedContainer = "container:classicHUD.xcodeproj">
                   </BuildableReference>
                </EnvironmentBuildable>
             </ActionContent>
@@ -34,9 +34,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "30C937672E806B79004B5AF5"
-               BuildableName = "volumeHUD.app"
-               BlueprintName = "volumeHUD"
-               ReferencedContainer = "container:volumeHUD.xcodeproj">
+               BuildableName = "classicHUD.app"
+               BlueprintName = "classicHUD"
+               ReferencedContainer = "container:classicHUD.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -63,7 +63,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "pkill -f volumeHUD&#10;">
+               scriptText = "pkill -f classicHUD&#10;">
             </ActionContent>
          </ExecutionAction>
       </PreActions>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "30C937672E806B79004B5AF5"
-            BuildableName = "volumeHUD.app"
-            BlueprintName = "volumeHUD"
-            ReferencedContainer = "container:volumeHUD.xcodeproj">
+            BuildableName = "classicHUD.app"
+            BlueprintName = "classicHUD"
+            ReferencedContainer = "container:classicHUD.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -89,9 +89,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "30C937672E806B79004B5AF5"
-            BuildableName = "volumeHUD.app"
-            BlueprintName = "volumeHUD"
-            ReferencedContainer = "container:volumeHUD.xcodeproj">
+            BuildableName = "classicHUD.app"
+            BlueprintName = "classicHUD"
+            ReferencedContainer = "container:classicHUD.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

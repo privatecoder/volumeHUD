@@ -14,7 +14,7 @@ disabled_rules:
   - trailing_comma
 
 included:
-  - volumeHUD
+  - classicHUD
 
 strict: true
 check_for_updates: true
