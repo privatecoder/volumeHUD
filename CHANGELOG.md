@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+### Changed
+
+- Renames the app to classicHUD, since it brings back the classic brightness HUD as well as the volume one. This fork of [volumeHUD](https://github.com/dannystewart/volumeHUD) now uses the bundle ID `com.privatecoder.classichud`, so Accessibility, notification, and login item settings must be granted again. The project, schemes, targets, source folder, and app icon are renamed to match. The update check now looks at `privatecoder/classicHUD` releases.
+- Earlier entries below describe upstream volumeHUD releases and keep the original name.
+- Builds are signed ad hoc ("Sign to Run Locally") with no development team, so no Apple developer account is needed.
+- Brightness keys are now left to macOS while the brightness HUD is turned off. Previously they were intercepted, so brightness changed with no HUD at all.
+- When interception fails before anything was changed, the key press now goes to macOS instead of being lost. The change is applied before the app decides whether to consume the key, so presses that already changed something are never applied twice. Key releases go to macOS whenever it may have seen that key's press, including holds that started before interception did.
+- Replaces the per-second polling for audio device changes with a CoreAudio listener, falling back to polling if the listener can't be installed.
+- Consolidates duplicated CoreAudio, DisplayServices, and key event tap code into shared helpers. The volume and brightness monitors now share one set of key observation paths and one default-device observer, which cuts the event taps from five to three, and an unused key monitor is removed.
+
+### Fixed
+
+- Fixes a memory leak where every system-defined event the key interceptor passed through was over-retained.
+- Fixes the "HUD follows mouse" and relative positioning settings behaving as off on a fresh install while the settings window showed them as on.
+- Fixes media key interception not starting after Accessibility is granted until the app was restarted. The app now keeps retrying until interception actually starts.
+- Fixes a HUD shown during the previous HUD's fade-out being hidden immediately.
+- Fixes a failed mute or unmute during a volume change leaving interception enabled with audio stuck muted, including devices whose mute state can't be read or changed.
+- Fixes classicHUD quitting at launch when an unrelated process, such as an editor or build tool, had "classicHUD" in its command line. The duplicate-instance check now matches by bundle ID.
+- Fixes volume and mute changes going unobserved if CoreAudio rejected a listener; installation is now retried, except for properties the device doesn't have. Volume monitoring also starts once an output device appears if there was none at launch.
+- Fixes turning off the brightness HUD leaving brightness polling running until quit.
+- Fixes a visible brightness HUD moving to the wrong screen after a display configuration change, and an unchanged-value HUD not following the mouse to another screen.
+- Fixes the sandboxed build never showing the HUD for mute changes.
+- Uses a monotonic clock for key timing heuristics, so system clock changes no longer affect them.
+- Debug log messages are no longer formatted unless debug logging is enabled.
+
 ## [3.3.4] (2026-10-02)
 
 ### Removed
@@ -296,7 +321,7 @@ Initial release.
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 <!-- Versions -->
-[unreleased]: https://github.com/dannystewart/volumeHUD/compare/v3.3.4...HEAD
+[unreleased]: https://github.com/privatecoder/classicHUD/compare/v3.3.4...HEAD
 [3.3.4]: https://github.com/dannystewart/volumeHUD/compare/v3.3.3...v3.3.4
 [3.3.3]: https://github.com/dannystewart/volumeHUD/compare/v3.3.2...v3.3.3
 [3.3.2]: https://github.com/dannystewart/volumeHUD/compare/v3.3.1...v3.3.2

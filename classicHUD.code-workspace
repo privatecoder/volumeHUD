@@ -1,7 +1,7 @@
 {
   "folders": [
     {
-      "name": "volumeHUD",
+      "name": "classicHUD",
       "path": "."
     },
     {
@@ -38,7 +38,7 @@
       "release": true,
       "venv": true
     },
-    "sweetpad.build.xcodeWorkspacePath": "volumeHUD.xcodeproj/project.xcworkspace",
+    "sweetpad.build.xcodeWorkspacePath": "classicHUD.xcodeproj/project.xcworkspace",
     "swift.autoGenerateLaunchConfigurations": false,
     "swift.backgroundCompilation": false,
     "swift.buildPath": "./.build"

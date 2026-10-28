@@ -6,8 +6,8 @@
         {
             "layers": [
                 {
-                    "image-name": "volumeHUD.png",
-                    "name": "volumeHUD",
+                    "image-name": "classicHUD.png",
+                    "name": "classicHUD",
                     "position": {
                         "scale": 1.1,
                         "translation-in-points": [

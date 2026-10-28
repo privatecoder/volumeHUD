@@ -2,7 +2,7 @@
 //  AboutView.swift
 //  by Danny Stewart (2025)
 //  MIT License
-//  https://github.com/dannystewart/volumeHUD
+//  https://github.com/privatecoder/classicHUD
 //
 
 import SwiftUI
@@ -14,18 +14,18 @@ struct AboutView: View {
 
     // Settings for app preferences
     #if !SANDBOX
-        @AppStorage("brightnessEnabled") private var brightnessEnabled: Bool = false
+        @AppStorage(SettingsKey.brightnessEnabled) private var brightnessEnabled: Bool = false
     #endif // !SANDBOX
-    @AppStorage("volumeHUDFollowsMouse") private var volumeHUDFollowsMouse: Bool = true
-    @AppStorage("useRelativePositioning") private var useRelativePositioning: Bool = true
+    @AppStorage(SettingsKey.followsMouse) private var classicHUDFollowsMouse: Bool = true
+    @AppStorage(SettingsKey.useRelativePositioning) private var useRelativePositioning: Bool = true
 
     #if !SANDBOX
         /// State to track if an update is available
         @State private var isUpdateAvailable: Bool = false
 
         // GitHub repository info
-        private let githubOwner = "dannystewart"
-        private let githubRepo = "volumeHUD"
+        private let githubOwner = "privatecoder"
+        private let githubRepo = "classicHUD"
     #endif // !SANDBOX
 
     /// Login item manager
@@ -73,12 +73,12 @@ struct AboutView: View {
             // MARK: - Left Column (App Info and Quit Button)
 
             VStack(spacing: 8) {
-                if let appIcon = NSImage(named: "volumeHUD") {
+                if let appIcon = NSImage(named: "classicHUD") {
                     Image(nsImage: appIcon)
                         .resizable()
                         .frame(width: 80, height: 80)
                 }
-                Text("volumeHUD")
+                Text("classicHUD")
                     .font(.system(size: 24, weight: .medium))
                 Text("by Danny Stewart")
                     .font(.system(size: 12))
@@ -112,7 +112,7 @@ struct AboutView: View {
                 Spacer(minLength: 0)
 
                 Button(action: onQuit) {
-                    Text("Quit volumeHUD")
+                    Text("Quit classicHUD")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -160,7 +160,7 @@ struct AboutView: View {
                                 .scaleEffect(0.8)
                                 .onChange(of: brightnessEnabled) { oldValue, newValue in
                                     logger.debug("Brightness setting changed from \(oldValue) to \(newValue).")
-                                    appDelegate?.startBrightnessMonitoringIfEnabled()
+                                    appDelegate?.updateBrightnessMonitoring()
                                 }
                         }
 
@@ -183,11 +183,11 @@ struct AboutView: View {
 
                 VStack(alignment: .leading, spacing: spaceBeforeSubtitle) {
                     HStack(alignment: .center, spacing: iconColumnWidth) {
-                        Image(systemName: volumeHUDFollowsMouse ? "cursorarrow.click.2" : "laptopcomputer")
-                            .foregroundStyle(volumeHUDFollowsMouse ? .blue : .gray)
+                        Image(systemName: classicHUDFollowsMouse ? "cursorarrow.click.2" : "laptopcomputer")
+                            .foregroundStyle(classicHUDFollowsMouse ? .blue : .gray)
                             .font(.system(size: 14))
                             .frame(width: 14, alignment: .leading)
-                            .animation(.easeInOut(duration: 0.3), value: volumeHUDFollowsMouse)
+                            .animation(.easeInOut(duration: 0.3), value: classicHUDFollowsMouse)
 
                         Text("HUD Follows Mouse")
                             .font(.system(size: 12, weight: .medium))
@@ -195,10 +195,10 @@ struct AboutView: View {
 
                         Spacer()
 
-                        Toggle("", isOn: $volumeHUDFollowsMouse)
+                        Toggle("", isOn: $classicHUDFollowsMouse)
                             .toggleStyle(SwitchToggleStyle(tint: .accentColor))
                             .scaleEffect(0.8)
-                            .onChange(of: volumeHUDFollowsMouse) { oldValue, newValue in
+                            .onChange(of: classicHUDFollowsMouse) { oldValue, newValue in
                                 logger.debug("Volume HUD display setting changed from \(oldValue) to \(newValue).")
                             }
                     }
@@ -207,7 +207,7 @@ struct AboutView: View {
                         Spacer()
                             .frame(width: 14)
 
-                        Text(volumeHUDFollowsMouse ? "Show on screen with mouse cursor" : "Always show on the primary display")
+                        Text(classicHUDFollowsMouse ? "Show on screen with mouse cursor" : "Always show on the primary display")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                             .opacity(0.8)
@@ -215,7 +215,7 @@ struct AboutView: View {
                     }
                 }
                 .padding(.leading, settingPadding)
-                .animation(.easeInOut(duration: 0.3), value: volumeHUDFollowsMouse)
+                .animation(.easeInOut(duration: 0.3), value: classicHUDFollowsMouse)
 
                 // MARK: - Relative Positioning Toggle
 

@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "30DAC6CB2EEE1F73004F96CE"
-               BuildableName = "volumeHUD.app"
-               BlueprintName = "volumeHUD (Sandbox)"
-               ReferencedContainer = "container:volumeHUD.xcodeproj">
+               BuildableName = "classicHUD.app"
+               BlueprintName = "classicHUD (Sandbox)"
+               ReferencedContainer = "container:classicHUD.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "30DAC6CB2EEE1F73004F96CE"
-            BuildableName = "volumeHUD.app"
-            BlueprintName = "volumeHUD (Sandbox)"
-            ReferencedContainer = "container:volumeHUD.xcodeproj">
+            BuildableName = "classicHUD.app"
+            BlueprintName = "classicHUD (Sandbox)"
+            ReferencedContainer = "container:classicHUD.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "30DAC6CB2EEE1F73004F96CE"
-            BuildableName = "volumeHUD.app"
-            BlueprintName = "volumeHUD (Sandbox)"
-            ReferencedContainer = "container:volumeHUD.xcodeproj">
+            BuildableName = "classicHUD.app"
+            BlueprintName = "classicHUD (Sandbox)"
+            ReferencedContainer = "container:classicHUD.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

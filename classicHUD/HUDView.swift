@@ -2,7 +2,7 @@
 //  HUDView.swift
 //  by Danny Stewart (2025)
 //  MIT License
-//  https://github.com/dannystewart/volumeHUD
+//  https://github.com/privatecoder/classicHUD
 //
 
 import SwiftUI
